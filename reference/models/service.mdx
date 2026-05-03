@@ -1,0 +1,112 @@
+---
+title: "Service (Servicio) model: complete field reference"
+description: "Field reference for the Servicio model: credit cost, session duration, MXN reference price, and feature bullet points shown to patients when booking."
+---
+
+The `Servicio` model defines a physiotherapy service offered by the clinic — for example, "Manual Therapy" or "Electrotherapy". Each service carries a credit cost, a reference price, a session duration, and an optional list of feature bullet points displayed to patients during booking. The `Duracion` field drives end-time calculation on every linked appointment.
+
+## Fields
+
+<ResponseField name="Id" type="int" required>
+  Primary key. Auto-incremented by the database.
+</ResponseField>
+
+<ResponseField name="Nombre" type="string" required>
+  Display name of the service. Maximum 100 characters. Shown in the booking wizard and the service catalog.
+</ResponseField>
+
+<ResponseField name="Descripcion" type="string" default='""'>
+  Full description of the service. Maximum 500 characters. Defaults to an empty string. Displayed to patients on the service detail view.
+</ResponseField>
+
+<ResponseField name="CreditosNecesarios" type="int">
+  Number of credits deducted from `ApplicationUser.CreditosDisponibles` when a patient books this service. Validated with `[Range(0, int.MaxValue)]`. A value of `0` allows free booking without consuming credits.
+</ResponseField>
+
+<ResponseField name="PrecioReferencia" type="decimal">
+  Optional reference price in MXN for clinics that track cash payments alongside the credit system. Validated with `[Range(0, int.MaxValue)]`. Does not affect credit deduction — for display and reporting only.
+</ResponseField>
+
+<ResponseField name="Duracion" type="TimeSpan">
+  Duration of a single session, stored as a `time` column in SQL Server. For example, `00:45:00` represents a 45-minute session. This value is used at runtime to compute `Cita.HoraFin`:
+
+  ```csharp
+  // In Cita.cs
+  [NotMapped]
+  public DateTime HoraFin => Servicio != null ? HoraInicio + Servicio.Duracion : HoraInicio;
+  ```
+
+  Because `HoraFin` is not persisted, changing a service's `Duracion` immediately affects the displayed end time for all existing appointments linked to that service.
+</ResponseField>
+
+<ResponseField name="Features" type="List<Feature>" default="new()">
+  Collection of `Feature` bullet points associated with this service. Each `Feature` has a `Description` string displayed as a list item on the service card shown to patients. Features are stored in a separate `Feature` table with a foreign key back to `Servicio`.
+
+  <Expandable title="Feature model fields">
+    <ResponseField name="Id" type="int">
+      Primary key of the feature record.
+    </ResponseField>
+    <ResponseField name="Description" type="string" required>
+      Text of the bullet point. Required. Defaults to an empty string.
+    </ResponseField>
+    <ResponseField name="ServicioId" type="int">
+      Foreign key back to the parent `Servicio`.
+    </ResponseField>
+    <ResponseField name="Servicio" type="Servicio">
+      Navigation property to the parent service.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Model source
+
+<CodeGroup>
+
+```csharp Servicio.cs
+using System.ComponentModel.DataAnnotations;
+namespace FisioCare_2.Models
+{
+    public class Servicio
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string Nombre { get; set; }
+
+        [StringLength(500)]
+        public string Descripcion { get; set; } = string.Empty;
+
+        [Range(0, int.MaxValue)]
+        public int CreditosNecesarios { get; set; }
+
+        [Range(0, int.MaxValue)]
+        public decimal PrecioReferencia { get; set; }
+
+        [DataType(DataType.Duration)]
+        public TimeSpan Duracion { get; set; } // e.g. 00:45:00 for 45 minutes
+
+        public List<Feature> Features { get; set; } = new();
+    }
+}
+```
+
+```csharp Feature.cs
+using System.ComponentModel.DataAnnotations;
+namespace FisioCare_2.Models
+{
+    public class Feature
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public string Description { get; set; } = string.Empty;
+
+        public int ServicioId { get; set; }
+
+        public Servicio Servicio { get; set; }
+    }
+}
+```
+
+</CodeGroup>

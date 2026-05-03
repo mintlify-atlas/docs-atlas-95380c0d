@@ -1,81 +1,174 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
-icon: 'rocket'
+title: "Get started with HealthMambo: your first appointment"
+description: "Go from a fresh machine to booking your first physiotherapy appointment in under 30 minutes. Covers prerequisites, setup, migrations, and first login."
 ---
 
-## Get started in three steps
+This guide walks you through every step from a clean Windows machine to a running HealthMambo instance with a real appointment booked. By the end you will have the database created, the app running, an Admin account configured, and your first appointment scheduled.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you start, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- Windows 10, Windows 11, or Windows Server (2019 or later)
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) — the project targets `net9.0`
+- [SQL Server Express](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) with Windows Authentication enabled
+- [Git](https://git-scm.com/) for cloning the repository
+- A modern browser (Chrome, Edge, or Firefox)
 
-### Step 2: Deploy your changes
+<Note>
+  HealthMambo uses Windows Authentication (`Integrated Security=True`) to connect to SQL Server, so no SQL Server username or password is required. Your Windows user account must have permission to create databases on the SQL Server instance.
+</Note>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Steps
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Steps>
+  <Step title="Clone the repository">
+    Open a terminal and clone the HealthMambo repository to your machine.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    git clone https://github.com/UrquijoDev/HealthMambo.git
+    cd HealthMambo/FisioCare-2
+    ```
+  </Step>
 
-### Step 3: Go live
+  <Step title="Configure the connection string">
+    Open `appsettings.json` in the `FisioCare-2` folder. The default connection string connects to a local SQL Server instance and creates a database named `FCDB`.
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    ```json appsettings.json
+    {
+      "ConnectionStrings": {
+        "DefaultConnection": "Server=localhost;Initial Catalog=FCDB;Integrated Security=True;Trust Server Certificate=True"
+      }
+    }
+    ```
+
+    If your SQL Server instance has a named instance (for example, `localhost\SQLEXPRESS`), update the `Server` value accordingly:
+
+    ```json appsettings.json
+    {
+      "ConnectionStrings": {
+        "DefaultConnection": "Server=localhost\\SQLEXPRESS;Initial Catalog=FCDB;Integrated Security=True;Trust Server Certificate=True"
+      }
+    }
+    ```
+
+    <Tip>
+      Leave `Initial Catalog=FCDB` as-is unless you have a specific reason to rename the database. The name is referenced nowhere else in the codebase.
+    </Tip>
+  </Step>
+
+  <Step title="Run database migrations">
+    Apply the Entity Framework Core migrations to create the `FCDB` database and all tables. This also seeds the four default roles (`Admin`, `Paciente`, `Fisioterapeuta`, `Recepcionista`) into the database.
+
+    ```bash
+    dotnet ef database update
+    ```
+
+    You should see output ending with `Done.` If the command is not found, install the EF Core tools globally first:
+
+    ```bash
+    dotnet tool install --global dotnet-ef
+    dotnet ef database update
+    ```
+  </Step>
+
+  <Step title="Launch the application">
+    Start the development server:
+
+    ```bash
+    dotnet run
+    ```
+
+    The terminal will print the local URLs where the app is listening, for example:
+
+    ```
+    info: Microsoft.Hosting.Lifetime[14]
+          Now listening on: https://localhost:7001
+          Now listening on: http://localhost:5000
+    ```
+
+    Open `https://localhost:7001` in your browser. Accept the self-signed certificate warning if prompted — this is expected in development.
+
+    <Warning>
+      HealthMambo redirects all HTTP traffic to HTTPS (`app.UseHttpsRedirection()` in `Program.cs`). Always use the `https://` URL. If you see a redirect loop, use the HTTPS port printed in the terminal output.
+    </Warning>
+  </Step>
+
+  <Step title="Register and configure the first admin account">
+    On the login page, click **Register** and create the first user account. This account will become your Admin.
+
+    After registering, you are logged in as a regular user with no role. You need to assign the `Admin` role directly in the database for the first setup:
+
+    1. Open **SQL Server Management Studio** (or any SQL client) and connect to `localhost`.
+    2. Run the following query in the `FCDB` database to find the new user's ID:
+
+    ```sql
+    SELECT Id, UserName FROM AspNetUsers;
+    ```
+
+    3. Assign the Admin role to that user:
+
+    ```sql
+    INSERT INTO AspNetUserRoles (UserId, RoleId)
+    VALUES (
+      '<your-user-id>',
+      'b98be2a3-d36f-432f-a733-c88a2e4f8579'
+    );
+    ```
+
+    The role ID `b98be2a3-d36f-432f-a733-c88a2e4f8579` is the seeded Admin role ID from `ApplicationDbContext.cs`.
+
+    4. Log out and log back in. You now have Admin access.
+
+    <Tip>
+      Once you have an Admin account, you can create and assign roles to all future users directly from the Admin panel in the web interface — no more manual SQL queries.
+    </Tip>
+  </Step>
+
+  <Step title="Create a service">
+    Log in as Admin and navigate to **Services** in the sidebar. Click **New service** and fill in:
+
+    - **Name** — for example, `Electrotherapy`
+    - **Duration** — session length in minutes
+    - **Credit cost** — number of credits deducted per appointment
+
+    Save the service. It will now be available to select when booking appointments.
+  </Step>
+
+  <Step title="Add a physiotherapist and set their schedule">
+    1. Go to **User management** and create a new user account for your physiotherapist.
+    2. Assign them the `Fisioterapeuta` role.
+    3. Navigate to **Schedules** and create a weekly availability record (`Horario`) for that physiotherapist, specifying their working days and hours.
+
+    The appointment booking system uses these schedule records to show only available time slots to patients and receptionists.
+  </Step>
+
+  <Step title="Book your first appointment">
+    You can book as Admin or log in as a `Paciente` (patient) account.
+
+    1. Navigate to **Appointments** and click **New appointment**.
+    2. Select a **service** from the list you created.
+    3. Choose an available **physiotherapist**.
+    4. Pick a **date and time** from the slots generated by their schedule.
+    5. Confirm the booking.
+
+    The appointment is saved as a `Cita` record linked to the patient, the physiotherapist, and the service. If the patient has a credit package, the service's credit cost is deducted automatically.
+  </Step>
+</Steps>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Detailed installation guide" icon="server" href="/installation">
+    Full Windows setup instructions including SQL Server Express configuration and production considerations.
+  </Card>
+  <Card title="User roles" icon="users" href="/roles/overview">
+    Understand what each role can do and how to structure your clinic's user accounts.
+  </Card>
+  <Card title="Credit packages" icon="credit-card" href="/features/credits">
+    Set up prepaid credit bundles so patients can pay for sessions in advance.
+  </Card>
+  <Card title="Schedule management" icon="clock" href="/features/schedules">
+    Configure physiotherapist weekly availability to drive time slot selection.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

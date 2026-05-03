@@ -1,0 +1,62 @@
+---
+title: "Receptionist role: managing appointments and credits"
+description: "Receptionists book and manage appointments on behalf of patients using a four-step wizard, and assign credit packages to patient accounts."
+---
+
+The Receptionist (Recepcionista) role is the primary front-desk operator in HealthMambo. Receptionists book, modify, and cancel appointments on behalf of patients, assign credit packages to patient accounts, and monitor the full appointment queue for the clinic. All Receptionist pages live under `/Recepcionista/`.
+
+## Dashboard
+
+The Receptionist dashboard at `/Recepcionista/Index` is divided into three sections:
+
+**Upcoming appointments** (`CitasProximas`) — A scrollable list of the next scheduled appointments. Each entry shows the patient's full name, the appointment date and time, the service booked, and the assigned physiotherapist.
+
+**Patient list** (`TodosLosPacientes`) — A searchable list of all registered patients. Each patient entry displays their name, email address, and current credit balance (`CreditosDisponibles`). Two action buttons appear inline:
+- **Agendar** — launches the appointment booking wizard for that patient.
+- **Créditos** — opens the credit management page for that patient.
+
+**Appointment history** (`HistorialCitas`) — A filterable table of all past and present appointments. The receptionist can filter by status (Pendiente, Completada, Cancelada) and take actions on pending appointments: modify, cancel, or mark as completed.
+
+## Booking appointments: the four-step wizard
+
+Receptionists book appointments through a multi-step form at `/Recepcionista/Appointment/Paso1`. The wizard is launched with `?idPaciente=<id>` in the URL so the booking is always tied to a specific patient.
+
+<Steps>
+  <Step title="Step 1 — Select physiotherapist (Terapeuta)">
+    The receptionist chooses a physiotherapist from a card-based selector that lists all active Fisioterapeuta accounts. The selection is passed as `idFisioterapeuta` to the next step.
+  </Step>
+  <Step title="Step 2 — Select service (Servicio)">
+    The receptionist picks the service the patient needs. Each service displays its name and credit cost (`CreditosNecesarios`).
+  </Step>
+  <Step title="Step 3 — Select date and time (Fecha y Hora)">
+    Available time slots are shown based on the selected physiotherapist's `Horarios` (weekly availability schedule). The receptionist picks a slot.
+  </Step>
+  <Step title="Step 4 — Confirm (Confirmación)">
+    A summary of the booking is displayed for review. On confirmation, the `Cita` record is created, and the patient's `CreditosDisponibles` balance is decremented by the service's credit cost.
+  </Step>
+</Steps>
+
+<Note>
+  The booking wizard requires the patient to have enough credits for the selected service. If the patient's `CreditosDisponibles` balance is insufficient, the booking will fail and display an error.
+</Note>
+
+## Assigning credits to patients
+
+The credit management page at `/Recepcionista/GestionCreditos` lets a receptionist assign a credit package to a patient. The page is accessed with `?idPaciente=<id>` and shows:
+
+1. A dropdown listing all available `PaqueteCredito` records, with each option showing the package name and credit quantity.
+2. A submit button that posts to the `AsignarCreditos` handler, which adds the package's credits to the patient's `CreditosDisponibles` balance.
+
+Success and error feedback is shown via TempData alerts on both the GestionCreditos page and the main Receptionist dashboard.
+
+## Managing existing appointments
+
+From the appointment history table, a receptionist can act on any pending (`Pendiente`) appointment:
+
+| Action | Route | Effect |
+|---|---|---|
+| Modify | `/Recepcionista/Appointment/Edit?id=<id>` | Edit the appointment details |
+| Cancel | `/Recepcionista/Appointment/Cancelar?id=<id>` | Mark the appointment as Cancelada |
+| Complete | `/Recepcionista/Appointment/Completada?id=<id>` | Mark the appointment as Completada |
+
+Completed and cancelled appointments remain visible in the history table but cannot be modified further.

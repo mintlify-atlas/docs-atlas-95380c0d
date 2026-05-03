@@ -1,0 +1,65 @@
+---
+title: "HealthMambo: Open-Source Physiotherapy Management System"
+description: "HealthMambo is a free, self-hosted clinical management system for physiotherapy clinics. Manage appointments, staff schedules, and patient credits."
+---
+
+HealthMambo is an open-source clinical management system built specifically for physiotherapy clinics operating in resource-limited environments. It runs on a local network server — no cloud subscription, no licensing fees — and unifies appointment scheduling, staff attendance, and a credit-based billing system into a single ASP.NET Core web application.
+
+The project originates from a study aimed at improving operational efficiency in clinics in Empalme, Sonora, with concrete goals: reduce appointment registration time by at least 40%, cut manual errors by 80%, and eliminate scheduling conflicts by 95%.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Integrated appointment scheduling" icon="calendar">
+    A guided booking flow prevents double-booking by checking physiotherapist schedules before confirming a slot. Appointments are linked to services, physiotherapists, and patient accounts in a single record.
+  </Card>
+  <Card title="Credit-based billing" icon="credit-card">
+    Patients purchase credit packages upfront. Each service has a credit cost, and credits are deducted automatically when an appointment is booked — no manual invoicing required.
+  </Card>
+  <Card title="Role-based access control" icon="shield">
+    Four distinct roles restrict each user to only the screens and actions they need. Staff cannot access patient billing; patients cannot manage other users.
+  </Card>
+  <Card title="Local-first architecture" icon="server">
+    HealthMambo runs on a single Windows machine on the clinic's local network. No internet connection is required for day-to-day operation, making it resilient in low-connectivity environments.
+  </Card>
+  <Card title="Zero licensing cost" icon="circle-check">
+    The codebase is fully open-source. There are no per-seat fees, no SaaS subscriptions, and no vendor lock-in. You own and control your own data.
+  </Card>
+  <Card title="Responsive interface" icon="mobile">
+    The Razor Pages front end is built with responsive CSS, so staff can use it from a desktop at the front desk or a tablet in the treatment room.
+  </Card>
+</CardGroup>
+
+## System architecture
+
+HealthMambo is a monolithic web application with a clear three-layer structure:
+
+- **Presentation layer** — Razor Pages (`.cshtml`) served by ASP.NET Core. Each page has a corresponding `PageModel` class in C# that handles HTTP requests and passes data to the view.
+- **Application layer** — Business logic lives in `PageModel` classes and service classes. Entity Framework Core handles all database operations through the `ApplicationDbContext`.
+- **Data layer** — SQL Server Express stores all application data. Entity Framework Core migrations manage schema changes. The database name is `FCDB` by default.
+
+The application uses ASP.NET Core Identity for authentication and authorization, with roles seeded directly into the database at migration time.
+
+## User roles
+
+HealthMambo defines four roles in `ApplicationDbContext.cs`. Each role has a fixed GUID seeded into the database so it is consistent across all installations.
+
+| Role | Spanish name | Responsibilities |
+|---|---|---|
+| **Admin** | Admin | Full system access. Manages users, services, credit packages, and system configuration. |
+| **Receptionist** | Recepcionista | Registers patients, books appointments on their behalf, and manages the daily schedule. |
+| **Physiotherapist** | Fisioterapeuta | Views their own appointment schedule and patient session details. |
+| **Patient** | Paciente | Books their own appointments, views their credit balance, and reviews appointment history. |
+
+<Note>
+  The first Admin user must be assigned their role manually after the initial database migration, because there is no self-registration flow for Admin accounts. See the [quickstart](/quickstart) for the exact steps.
+</Note>
+
+## What makes it suitable for resource-limited clinics
+
+Most commercial clinic management systems require a monthly subscription, a reliable internet connection, and dedicated IT support. HealthMambo is designed around the opposite constraints:
+
+- **Runs on existing hardware** — A modest Windows PC acting as a local server is sufficient. There is no requirement for cloud infrastructure.
+- **No ongoing costs** — The only costs are the hardware and the time to set it up.
+- **Simple data model** — The schema (`Horarios`, `Servicios`, `Citas`, `PaquetesCredito`, `TransaccionCredito`) maps directly to the clinic's existing paper-based processes, making adoption straightforward.
+- **Customizable** — Because the source code is open, a developer can modify workflows, add fields, or integrate with local billing systems without negotiating with a vendor.

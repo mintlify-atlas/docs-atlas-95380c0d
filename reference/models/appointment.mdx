@@ -1,0 +1,125 @@
+---
+title: "Appointment (Cita) model: complete field reference"
+description: "Field-by-field reference for the Cita model: database relationships, constraints, and how HoraFin is computed at runtime from the linked service duration."
+---
+
+The `Cita` model represents a scheduled appointment in HealthMambo. Each appointment links a patient (`Usuario`) to an optional physiotherapist and an optional service, recording the start time, status, and any clinical notes. The end time (`HoraFin`) is not stored in the database — it is computed at runtime by adding the service duration to `HoraInicio`.
+
+## Fields
+
+<ResponseField name="Id" type="int" required>
+  Primary key. Auto-incremented by the database.
+</ResponseField>
+
+<ResponseField name="UsuarioId" type="string" required>
+  Foreign key referencing the patient's `ApplicationUser.Id`. This field is required — every appointment must have a patient.
+</ResponseField>
+
+<ResponseField name="Usuario" type="ApplicationUser">
+  Navigation property to the patient's user record. See [User model](/reference/models/user).
+</ResponseField>
+
+<ResponseField name="FisioterapeutaId" type="string | null">
+  Foreign key referencing the physiotherapist's `ApplicationUser.Id`. Nullable — appointments can be created before a physiotherapist is assigned.
+</ResponseField>
+
+<ResponseField name="Fisioterapeuta" type="ApplicationUser | null">
+  Navigation property to the physiotherapist's user record. `null` when no physiotherapist has been assigned yet.
+</ResponseField>
+
+<ResponseField name="ServicioId" type="int | null">
+  Foreign key referencing the linked `Servicio`. Nullable — if the service is deleted, this field is set to `null` (SetNull delete behavior) rather than deleting the appointment.
+</ResponseField>
+
+<ResponseField name="Servicio" type="Servicio | null">
+  Navigation property to the linked service record. `null` when no service is assigned or after the service has been deleted. See [Service model](/reference/models/service).
+</ResponseField>
+
+<ResponseField name="HoraInicio" type="DateTime" required>
+  Appointment start date and time. Stored as a `datetime2` column in SQL Server.
+</ResponseField>
+
+<ResponseField name="HoraFin" type="DateTime">
+  Computed end time. Not mapped to a database column (`[NotMapped]`). Calculated as `HoraInicio + Servicio.Duracion`. Returns `HoraInicio` unchanged when `Servicio` is `null`.
+</ResponseField>
+
+<ResponseField name="Estado" type="string" required default="Pendiente">
+  Current status of the appointment. Maximum 20 characters. Defaults to `"Pendiente"`. Values used by the application: `Pendiente` (newly created), `Cancelada` (cancelled), `Completada` (session delivered).
+</ResponseField>
+
+<ResponseField name="Motivo" type="string | null">
+  Reason for the appointment as entered by the patient or receptionist. Maximum 500 characters. Optional.
+</ResponseField>
+
+<ResponseField name="Notas" type="string | null">
+  Clinical notes added by the physiotherapist after or during the session. Maximum 1000 characters. Optional.
+</ResponseField>
+
+<ResponseField name="CreatedAt" type="DateTime" default="DateTime.Now">
+  Timestamp of when the appointment record was created. Defaults to the server's current date and time at insert.
+</ResponseField>
+
+## Database relationships
+
+The foreign key delete behaviors are configured explicitly in `ApplicationDbContext.OnModelCreating` to avoid SQL Server cascade conflicts that arise when two foreign keys on the same table both point to `AspNetUsers`:
+
+| Foreign key | Target table | Delete behavior | Effect |
+|---|---|---|---|
+| `UsuarioId` | `AspNetUsers` | `NoAction` | Deleting a patient does not automatically delete their appointments. |
+| `FisioterapeutaId` | `AspNetUsers` | `NoAction` | Deleting a physiotherapist does not automatically affect appointments. |
+| `ServicioId` | `Servicio` | `SetNull` | Deleting a service sets `ServicioId` to `null` on any linked appointments, preserving the appointment record. |
+
+<Note>
+  Because both `UsuarioId` and `FisioterapeutaId` use `NoAction`, you must handle orphaned appointment records manually before deleting a user account in production.
+</Note>
+
+## Model source
+
+```csharp Cita.cs
+using FisioCare_2.Models;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+
+public class Cita
+{
+    public int Id { get; set; }
+
+    // Paciente
+    [Required]
+    public string UsuarioId { get; set; }
+    public ApplicationUser Usuario { get; set; }
+
+    // Fisioterapeuta
+    public string? FisioterapeutaId { get; set; }
+    public ApplicationUser? Fisioterapeuta { get; set; }
+
+    // Servicio asociado
+    public int? ServicioId { get; set; }
+    public Servicio? Servicio { get; set; }
+
+    // Fecha y hora de inicio de la cita
+    [Required]
+    [DataType(DataType.DateTime)]
+    public DateTime HoraInicio { get; set; }
+
+    // Fecha y hora de fin calculada con la duración del servicio
+    [NotMapped]
+    public DateTime HoraFin => Servicio != null ? HoraInicio + Servicio.Duracion : HoraInicio;
+
+    // Estado de la cita (opcional)
+    [Required]
+    [StringLength(20)]
+    public string Estado { get; set; } = "Pendiente";
+
+    // Motivo de la cita (opcional)
+    [StringLength(500)]
+    public string? Motivo { get; set; }
+
+    // Notas del fisioterapeuta (opcional)
+    [StringLength(1000)]
+    public string? Notas { get; set; }
+
+    // Fecha de creación de la cita
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+```

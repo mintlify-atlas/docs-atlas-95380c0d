@@ -1,0 +1,243 @@
+---
+title: "Install HealthMambo on Windows: a complete setup guide"
+description: "Step-by-step guide to install HealthMambo on Windows 10, 11, or Server. Covers .NET 9 SDK, SQL Server Express, EF migrations, and running the app."
+---
+
+HealthMambo is a self-hosted ASP.NET Core web application that runs on Windows. This guide covers a complete installation from scratch — including all prerequisites, database setup, and first launch. Follow these steps on the machine that will act as the clinic's local server.
+
+<Note>
+  HealthMambo is designed to run on a local network. You do not need a public IP address, a domain name, or a cloud server. A standard Windows PC on the clinic's internal network is sufficient.
+</Note>
+
+## System requirements
+
+| Component | Minimum |
+|---|---|
+| Operating system | Windows 10, Windows 11, or Windows Server 2019 / 2022 |
+| RAM | 2 GB (4 GB recommended) |
+| Disk space | 2 GB free (for .NET runtime, SQL Server Express, and application files) |
+| Network | Local network access for other clinic devices to reach the server |
+| Browser | Chrome, Edge, or Firefox (for the admin using the server machine) |
+
+## Steps
+
+<Steps>
+  <Step title="Install the .NET 9 SDK">
+    HealthMambo targets `net9.0` (see `FisioCare-2.csproj`). You need the full SDK — not just the runtime — to run migrations and build the project.
+
+    1. Go to [https://dotnet.microsoft.com/download/dotnet/9.0](https://dotnet.microsoft.com/download/dotnet/9.0).
+    2. Download the **.NET 9 SDK** installer for Windows x64.
+    3. Run the installer and follow the prompts.
+    4. Verify the installation:
+
+    ```bash
+    dotnet --version
+    ```
+
+    The output should be `9.0.x` or later.
+  </Step>
+
+  <Step title="Install SQL Server Express">
+    HealthMambo uses SQL Server as its database engine via Entity Framework Core.
+
+    1. Download **SQL Server Express** from [https://www.microsoft.com/en-us/sql-server/sql-server-downloads](https://www.microsoft.com/en-us/sql-server/sql-server-downloads).
+    2. Run the installer and choose the **Basic** installation type. This installs SQL Server with default settings and is sufficient for HealthMambo.
+    3. Note the **instance name** shown at the end of the installation (typically `localhost\SQLEXPRESS` or just `localhost` for the default instance).
+    4. Make sure **Windows Authentication** is enabled — it is on by default for Express editions.
+
+    <Tip>
+      You do not need SQL Server Management Studio (SSMS) to run HealthMambo, but it is useful for initial Admin role setup. Download SSMS separately from the Microsoft website if needed.
+    </Tip>
+  </Step>
+
+  <Step title="Install Git and clone the repository">
+    If Git is not already installed, download it from [https://git-scm.com/](https://git-scm.com/) and install with the default options.
+
+    Then clone the HealthMambo repository:
+
+    ```bash
+    git clone https://github.com/UrquijoDev/HealthMambo.git
+    ```
+
+    Navigate into the application project folder:
+
+    ```bash
+    cd HealthMambo/FisioCare-2
+    ```
+
+    All subsequent commands in this guide should be run from the `FisioCare-2` directory.
+  </Step>
+
+  <Step title="Configure appsettings.json">
+    Open `appsettings.json` in a text editor. It already contains a working connection string for a default SQL Server installation:
+
+    <CodeGroup>
+
+    ```json Default instance (localhost)
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning"
+        }
+      },
+      "AllowedHosts": "*",
+      "ConnectionStrings": {
+        "DefaultConnection": "Server=localhost;Initial Catalog=FCDB;Integrated Security=True;Trust Server Certificate=True"
+      }
+    }
+    ```
+
+    ```json Named instance (e.g. SQLEXPRESS)
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning"
+        }
+      },
+      "AllowedHosts": "*",
+      "ConnectionStrings": {
+        "DefaultConnection": "Server=localhost\\SQLEXPRESS;Initial Catalog=FCDB;Integrated Security=True;Trust Server Certificate=True"
+      }
+    }
+    ```
+
+    </CodeGroup>
+
+    Key connection string parameters:
+
+    | Parameter | Value | Notes |
+    |---|---|---|
+    | `Server` | `localhost` or `localhost\SQLEXPRESS` | Match the instance name from your SQL Server installation |
+    | `Initial Catalog` | `FCDB` | The database name. Entity Framework will create it automatically. |
+    | `Integrated Security` | `True` | Uses your Windows login. No SQL username or password needed. |
+    | `Trust Server Certificate` | `True` | Required for local development with a self-signed SQL Server certificate. |
+
+    <Warning>
+      Do not set `Trust Server Certificate=True` in a production environment exposed to the internet. Use a properly signed SSL certificate and set this to `False` instead.
+    </Warning>
+  </Step>
+
+  <Step title="Install the EF Core tools and run migrations">
+    The `dotnet-ef` tool is required to apply database migrations from the command line. Install it globally if you have not already:
+
+    ```bash
+    dotnet tool install --global dotnet-ef
+    ```
+
+    Then apply the migrations. This creates the `FCDB` database on your SQL Server instance, generates all tables, and seeds the four default roles (`Admin`, `Paciente`, `Fisioterapeuta`, `Recepcionista`):
+
+    ```bash
+    dotnet ef database update
+    ```
+
+    A successful run ends with output similar to:
+
+    ```
+    Applying migration '20240101000000_InitialCreate'.
+    Done.
+    ```
+
+    <Note>
+      The `Microsoft.EntityFrameworkCore.SqlServer` (version 9.0.4) and `Microsoft.EntityFrameworkCore.Tools` (version 9.0.4) packages are already declared in `FisioCare-2.csproj` — you do not need to install them separately.
+    </Note>
+  </Step>
+
+  <Step title="Run the application">
+    Start the application with:
+
+    ```bash
+    dotnet run
+    ```
+
+    The terminal output will show the URLs where the app is listening:
+
+    ```
+    info: Microsoft.Hosting.Lifetime[14]
+          Now listening on: https://localhost:7001
+          Now listening on: http://localhost:5000
+    Application started. Press Ctrl+C to shut down.
+    ```
+
+    Open `https://localhost:7001` in your browser.
+
+    <Warning>
+      HealthMambo enforces HTTPS redirection via `app.UseHttpsRedirection()` in `Program.cs`. Always use the `https://` address. In development, your browser will show a certificate warning for the self-signed development certificate — this is expected. Accept the exception to proceed.
+    </Warning>
+
+    To trust the development certificate and avoid repeated browser warnings, run:
+
+    ```bash
+    dotnet dev-certs https --trust
+    ```
+  </Step>
+
+  <Step title="Complete first-time setup">
+    After the app is running:
+
+    1. Click **Register** on the login page and create the first user account.
+    2. Assign the `Admin` role to that account by running this SQL query against the `FCDB` database:
+
+    ```sql
+    -- Find the new user's ID
+    SELECT Id, UserName FROM AspNetUsers;
+
+    -- Assign the Admin role (seeded role ID from ApplicationDbContext.cs)
+    INSERT INTO AspNetUserRoles (UserId, RoleId)
+    VALUES (
+      '<your-user-id>',
+      'b98be2a3-d36f-432f-a733-c88a2e4f8579'
+    );
+    ```
+
+    3. Log out and log back in. Your account now has Admin access and you can manage all users, services, and system settings from the web interface.
+  </Step>
+</Steps>
+
+## Development vs. production
+
+HealthMambo's `Program.cs` includes a branch that controls error handling and HTTPS security headers based on the current environment:
+
+```csharp Program.cs
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts(); // Sends HSTS header; default max-age is 30 days
+}
+```
+
+| Setting | Development | Production |
+|---|---|---|
+| Error pages | Detailed developer exception page | Generic `/Error` page |
+| HSTS | Disabled | Enabled (30-day max-age) |
+| `Trust Server Certificate` | `True` is acceptable | Use a signed certificate and set to `False` |
+| HTTPS certificate | `dotnet dev-certs` self-signed cert | Install a proper TLS certificate |
+
+To run HealthMambo in production mode, set the `ASPNETCORE_ENVIRONMENT` environment variable before starting the app:
+
+```bash
+set ASPNETCORE_ENVIRONMENT=Production
+dotnet run
+```
+
+<Note>
+  For a persistent production deployment, consider running HealthMambo as a Windows Service using `sc.exe` or registering it with IIS as a reverse proxy. The `dotnet run` command is suitable for development and initial testing.
+</Note>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="dotnet ef: command not found">
+    Install the EF Core global tool: `dotnet tool install --global dotnet-ef`. Then close and reopen your terminal so the PATH update takes effect.
+  </Accordion>
+  <Accordion title="Migration fails with 'Cannot open database FCDB'">
+    Check that the `Server` value in your connection string matches the actual SQL Server instance name on your machine. For a named instance like SQLEXPRESS, use `Server=localhost\\SQLEXPRESS`.
+  </Accordion>
+  <Accordion title="Browser shows 'Your connection is not private'">
+    This is the browser warning for the self-signed development certificate. Run `dotnet dev-certs https --trust` to install and trust it, then restart the browser.
+  </Accordion>
+  <Accordion title="App starts but redirects to HTTP infinitely">
+    You are accessing the HTTP port. Use the `https://` URL printed in the terminal output (typically `https://localhost:7001`).
+  </Accordion>
+</AccordionGroup>

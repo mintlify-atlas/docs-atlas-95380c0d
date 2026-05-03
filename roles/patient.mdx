@@ -1,0 +1,71 @@
+---
+title: "Patient role: booking appointments and managing credits"
+description: "Patients book their own appointments through a four-step wizard, track their available credit balance, and review their full appointment history."
+---
+
+The Patient (Paciente) role is the end-user facing side of HealthMambo. Patients log in to book their own appointments, check how many credits they have available, and review or manage their appointment history. All Patient pages live under `/Paciente/`.
+
+## Dashboard
+
+The Patient dashboard at `/Paciente/Index` is the patient's main hub, described on screen as "Bienvenido a tu portal de pacientes". It is divided into three areas:
+
+**Next appointment** (`ProximaCita`) — Shows the patient's next upcoming appointment in a prominent card, including the date, start and end time, estimated duration in minutes, the physiotherapist's name, and the service booked. If no upcoming appointment exists, a message prompts the patient to book one.
+
+**Credit balance and booking prompt** — A highlighted alert displays the patient's current `CreditosDisponibles` balance. Below it, a call-to-action button labelled **Agendar ahora** launches the four-step appointment booking wizard.
+
+**Appointment history** (`HistorialCitas`) — A filterable table of all the patient's past and present appointments. The patient can filter by status (Todos, Completada, Cancelada, Pendiente) and can modify or cancel any appointment still in `Pendiente` status.
+
+## Credits
+
+Credits are the payment unit in HealthMambo. Patients must have enough credits to book a service — each `Servicio` has a `CreditosNecesarios` value that is deducted from `CreditosDisponibles` when the booking is confirmed.
+
+Credits are not purchased or topped up by the patient directly. A Receptionist must assign a `PaqueteCredito` to the patient's account via the GestionCreditos page before the patient can book sessions.
+
+<Note>
+  If you attempt to book an appointment without sufficient credits, the booking will be rejected. Contact the clinic reception to have a credit package assigned to your account.
+</Note>
+
+The credit balance is stored on the `ApplicationUser` record:
+
+```csharp ApplicationUser.cs
+[Range(0, int.MaxValue)]
+public int CreditosDisponibles { get; set; } = 0;
+```
+
+The balance cannot go below zero. The `Range` attribute enforces this at the model validation level.
+
+## Booking appointments: the four-step wizard
+
+Patients book through the same guided wizard used by Receptionists and Physiotherapists, accessed at `/Paciente/Appointment/Paso1`.
+
+<Steps>
+  <Step title="Step 1 — Select physiotherapist">
+    Choose a physiotherapist from the available list. Each therapist is shown as a card with their photo and name.
+  </Step>
+  <Step title="Step 2 — Select service">
+    Choose the service you need. The credit cost of each service is displayed so you can confirm you have enough credits before proceeding.
+  </Step>
+  <Step title="Step 3 — Select date and time">
+    Available time slots are generated from the selected physiotherapist's weekly `Horarios` availability. Pick a slot that works for you.
+  </Step>
+  <Step title="Step 4 — Confirm">
+    Review the full booking summary. On confirmation, the appointment is created and your `CreditosDisponibles` balance is decremented by the service cost.
+  </Step>
+</Steps>
+
+## Managing your appointments
+
+From the appointment history table, you can act on any appointment with a `Pendiente` status:
+
+| Action | Route | Effect |
+|---|---|---|
+| Modify | `/Paciente/Appointment/Edit?id=<id>` | Change the date, time, or physiotherapist |
+| Cancel | `/Paciente/Appointment/Cancelar?id=<id>` | Cancel the appointment |
+
+<Warning>
+  Cancelling an appointment does not automatically refund your credits in the current version of HealthMambo. Contact the receptionist if a refund is needed.
+</Warning>
+
+## Reminders
+
+The Patient dashboard includes a static reminders panel with general pre-appointment instructions, such as bringing imaging studies to the next session and observing a three-hour fast before therapy.

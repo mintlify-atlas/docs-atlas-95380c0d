@@ -1,0 +1,65 @@
+---
+title: "Admin role: complete clinic management and oversight"
+description: "The Admin role has unrestricted access to user management, service configuration, and credit package administration across the entire HealthMambo platform."
+---
+
+The Admin role is the highest-privilege role in HealthMambo. An admin can create and manage all user accounts (staff and patients), define the services the clinic offers, configure credit packages for sale, and monitor recent clinic activity from a central dashboard. Every Admin page is protected with `[Authorize(Roles = "Admin")]`.
+
+## Dashboard
+
+When an admin logs in, they land on `/Admin/Index`, which displays a live summary of recent clinic activity across three panels.
+
+**Recent employees** (`EmpleadosRecientes`) lists the five most recently registered staff members — Fisioterapeutas and Recepcionistas — ordered by `CreatedAt` descending. Each entry shows the employee's full name and their assigned role.
+
+<Note>
+  Admin accounts are not shown in the `EmpleadosRecientes` panel. The dashboard filter explicitly includes only `Fisioterapeuta` and `Recepcionista` role names.
+</Note>
+
+**Recent credit packages** (`PaquetesRecientes`) shows the five most recently created `PaqueteCredito` records, with the package name and price.
+
+**Recent services** (`ServiciosRecientes`) lists the five most recently added `Servicio` records, with the service name and the number of credits it costs.
+
+<Tip>
+  The dashboard is read-only. To add or modify employees, services, or packages, navigate to the relevant management pages from the admin sidebar.
+</Tip>
+
+## Capabilities
+
+<AccordionGroup>
+  <Accordion title="User management" icon="users">
+    Admins can create, edit, and deactivate accounts for all roles: Admin, Receptionist, Physiotherapist, and Patient. User management pages live under `/Admin/` and use ASP.NET Core Identity's `UserManager<ApplicationUser>` for all account operations.
+
+    Each user record stores `FirstName`, `LastName`, `ImageFileName`, and `CreatedAt` in addition to the standard Identity fields.
+  </Accordion>
+
+  <Accordion title="Service configuration" icon="wrench">
+    Services define what the clinic offers. Each `Servicio` record has a name and a `CreditosNecesarios` value — the number of credits a patient must spend to book that service. Admins create and manage services through the service configuration pages.
+  </Accordion>
+
+  <Accordion title="Credit package management" icon="box">
+    Credit packages (`PaqueteCredito`) bundle a set number of credits for a given price. Receptionists assign these packages to patients. Admins define the available packages — name, credit quantity, and price — through the credit package administration pages.
+  </Accordion>
+</AccordionGroup>
+
+## Pages and routes
+
+| Page | Route | Purpose |
+|---|---|---|
+| Admin dashboard | `/Admin/Index` | Overview of recent employees, packages, and services |
+| User management | `/Admin/` (user subpages) | Create and manage all user accounts |
+| Service configuration | `/Admin/` (service subpages) | Add and edit clinic services |
+| Credit packages | `/Admin/` (package subpages) | Define credit bundle offerings |
+
+## Access control
+
+The `IndexModel` for the admin dashboard enforces role authorization at the page level:
+
+```csharp Pages/Admin/Index.cshtml.cs
+[Authorize(Roles = "Admin")]
+public class IndexModel : PageModel
+{
+    // ...
+}
+```
+
+Any request to an `/Admin/` page from a non-Admin user is rejected by the ASP.NET Core authorization middleware and redirected to the login page.

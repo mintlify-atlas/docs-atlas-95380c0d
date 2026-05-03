@@ -1,0 +1,126 @@
+---
+title: 'Managing physiotherapy services and treatment catalog'
+description: 'Services define the treatments a clinic offers, including duration, credit cost, reference price, and a list of features visible to patients during booking.'
+---
+
+Services are the treatments a clinic offers — for example, manual therapy, electrotherapy, or personalised exercise programmes. Each service drives two key parts of the system: it determines the credit cost a patient must pay to book, and it determines how long the appointment block will be.
+
+## The `Servicio` model
+
+```csharp
+public class Servicio
+{
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public string Nombre { get; set; }              // Service name
+
+    [StringLength(500)]
+    public string Descripcion { get; set; } = string.Empty;
+
+    [Range(0, int.MaxValue)]
+    public int CreditosNecesarios { get; set; }     // Credits required to book
+
+    [Range(0, int.MaxValue)]
+    public decimal PrecioReferencia { get; set; }   // Reference price in MXN
+
+    [DataType(DataType.Duration)]
+    public TimeSpan Duracion { get; set; }           // e.g. 00:45:00 for 45 minutes
+
+    public List<Feature> Features { get; set; } = new();
+}
+```
+
+### How `Duracion` affects appointments
+
+`Servicio.Duracion` is a `TimeSpan` stored in `hh:mm:ss` format (for example, `00:45:00` for a 45-minute session). When the `Cita.HoraFin` computed property is evaluated, it adds this duration to `HoraInicio`:
+
+```csharp
+// In the Cita model
+[NotMapped]
+public DateTime HoraFin => Servicio != null
+    ? HoraInicio + Servicio.Duracion
+    : HoraInicio;
+```
+
+Setting an accurate `Duracion` is important — it determines the end time shown in the schedule and prevents overlapping bookings.
+
+### Service features (`Feature`)
+
+Each service can have a list of `Feature` records that describe what is included in the session:
+
+```csharp
+public class Feature
+{
+    public int Id { get; set; }
+
+    [Required]
+    public string Description { get; set; } = string.Empty;
+
+    public int ServicioId { get; set; }
+    public Servicio Servicio { get; set; }
+}
+```
+
+Features are stored as individual rows linked to the service via `ServicioId`. In the admin UI, you enter them as a comma-separated list and the system splits them into separate `Feature` records on save.
+
+## Browsing services
+
+Navigate to **Admin → Servicios de Fisioterapia** (`/Admin/ServiciosFisioConf`) to see a table of all services. Each row shows:
+
+- **Nombre** — service name
+- **Duración** — total minutes (computed from `Duracion.TotalMinutes`)
+- **Créditos** — `CreditosNecesarios`
+- **Precio Ref.** — `PrecioReferencia` formatted as currency
+- **Descripción** — short description, or "Sin descripción" if empty
+- **Características** — bulleted list of associated `Feature` records
+- **Acciones** — edit and delete links
+
+## Creating a service
+
+<Steps>
+  <Step title="Open the new service form">
+    From the services index page, click **Nuevo Servicio**. This navigates to `/Admin/ServiciosFisioConf/Create`.
+  </Step>
+  <Step title="Fill in the service details">
+    Complete the form fields:
+
+    | Field | Description |
+    |---|---|
+    | **Nombre del Servicio** | Display name, up to 100 characters |
+    | **Descripción** | Optional explanation of the service |
+    | **Créditos necesarios** | Integer — how many credits a patient must spend to book this service |
+    | **Precio Referencia** | Decimal — reference price in MXN (informational; payment is credit-based) |
+    | **Duración** | Time in `hh:mm:ss` format, e.g. `00:45:00` for 45 minutes |
+    | **Características** | Comma-separated list of features, e.g. `Evaluación física inicial, Ejercicios personalizados` |
+  </Step>
+  <Step title="Save the service">
+    Click **Guardar**. The system saves the `Servicio` record and creates a `Feature` row for each item in the comma-separated characteristics list.
+
+    A success alert confirms the save, or an error alert explains any validation failure.
+  </Step>
+</Steps>
+
+<Note>
+Setting `CreditosNecesarios` to `0` allows a service to be booked without spending any credits. This is useful for free consultations or administrative sessions.
+</Note>
+
+## Editing and deleting services
+
+From the services index, click **Editar** next to a service to update its fields, or **Eliminar** to delete it.
+
+<Warning>
+Deleting a service that has existing appointments (`Cita` records) linked to it may cause data integrity issues. Archive or reassign those appointments before deleting the service.
+</Warning>
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Credit-based billing" icon="coins" href="/features/credits">
+    Understand how `CreditosNecesarios` drives the booking cost for each service.
+  </Card>
+  <Card title="Appointment scheduling" icon="calendar-check" href="/features/appointments">
+    See how service duration determines appointment end times.
+  </Card>
+</CardGroup>

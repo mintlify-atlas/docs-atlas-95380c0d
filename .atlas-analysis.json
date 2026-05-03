@@ -1,0 +1,78 @@
+{
+  "projectType": "saas",
+  "projectName": "HealthMambo",
+  "projectDescription": "An open-source clinical management system for physiotherapy clinics, providing integrated appointment scheduling, staff attendance management, and patient credit management.",
+  "theme": "almond",
+  "primaryColor": "#2E86AB",
+  "lightColor": "#A8D5E2",
+  "darkColor": "#1A5276",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "installation"]
+          },
+          {
+            "group": "User Roles",
+            "pages": ["roles/overview", "roles/admin", "roles/receptionist", "roles/physiotherapist", "roles/patient"]
+          },
+          {
+            "group": "Core Features",
+            "pages": ["features/appointments", "features/credits", "features/services", "features/schedules"]
+          },
+          {
+            "group": "Administration",
+            "pages": ["admin/user-management", "admin/service-configuration", "admin/credit-packages"]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Data Models",
+            "pages": ["reference/models/appointment", "reference/models/user", "reference/models/service", "reference/models/credit"]
+          },
+          {
+            "group": "Configuration",
+            "pages": ["reference/configuration", "reference/database"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Role-based access control (Admin, Receptionist, Physiotherapist, Patient)",
+    "Multi-step appointment scheduling workflow",
+    "Credit-based payment system for physiotherapy services",
+    "Physiotherapist schedule management",
+    "Service catalog with duration and credit requirements",
+    "Admin dashboard with recent activity overview",
+    "Open source, self-hosted with SQL Server Express",
+    "Responsive web interface built with ASP.NET Core Razor Pages"
+  ],
+  "publicApiSurface": [
+    "Pages/Index — Public landing page with service overview",
+    "Pages/Admin/Index — Admin dashboard",
+    "Pages/Admin/UsuariosT — User management (CRUD)",
+    "Pages/Admin/ServiciosFisioConf — Service configuration (CRUD)",
+    "Pages/Admin/PaquetesCreditosConf — Credit package configuration",
+    "Pages/Admin/GestionCreditosConf — Credit management overview",
+    "Pages/Recepcionista/Index — Receptionist dashboard",
+    "Pages/Recepcionista/Appointment/Paso1-4 — Appointment booking wizard (Receptionist)",
+    "Pages/Recepcionista/GestionCreditos — Patient credit assignment",
+    "Pages/Fisioterapeuta/Index — Physiotherapist dashboard",
+    "Pages/Fisioterapeuta/Appointment/Paso1-4 — Appointment booking wizard (Physiotherapist)",
+    "Pages/Paciente/Index — Patient dashboard",
+    "Pages/Paciente/Appointment/Paso1-4 — Appointment booking wizard (Patient)",
+    "Models/Cita — Appointment entity",
+    "Models/ApplicationUser — User entity with credit balance",
+    "Models/Servicio — Service entity with duration and credits",
+    "Models/Horario — Physiotherapist schedule entity",
+    "Models/PaqueteCredito — Credit package entity",
+    "Models/TransaccionCredito — Credit transaction entity"
+  ]
+}

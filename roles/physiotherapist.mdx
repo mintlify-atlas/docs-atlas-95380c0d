@@ -1,0 +1,78 @@
+---
+title: "Physiotherapist role: schedule and session management"
+description: "Physiotherapists view their upcoming appointments, manage session status, reschedule patients, and define their weekly availability in HealthMambo."
+---
+
+The Physiotherapist (Fisioterapeuta) role is scoped to a single practitioner's workload. A physiotherapist sees only their own appointments and patients, can update appointment status directly, and configures their weekly availability schedule (`Horario`) which drives the time slots shown during booking. All Physiotherapist pages live under `/Fisioterapeuta/`.
+
+## Dashboard
+
+The Physiotherapist dashboard at `/Fisioterapeuta/Index` mirrors the layout of the Receptionist dashboard but is filtered to the logged-in physiotherapist's appointments only. Three sections are shown:
+
+**Active appointment count** — A badge in the page header displays the total number of currently active (`CitasActivas`) appointments at a glance.
+
+**Upcoming appointments** (`CitasProximas`) — A scrollable list of the physiotherapist's next scheduled appointments. Each entry shows the patient's full name, the appointment date and time, and the service booked. Three inline action buttons allow the physiotherapist to complete, cancel, or modify a pending appointment directly from this panel.
+
+**Patient list** — A searchable panel showing all unique patients the physiotherapist has previously seen, derived from their full appointment history. Each entry shows the patient's name, the date of their last appointment, and their current credit balance (`CreditosDisponibles`). A **Reagendar** button launches the booking wizard pre-filtered to this physiotherapist.
+
+**Appointment history** (`HistorialCitas`) — A filterable table of all appointments (Pendiente, Completada, Cancelada). Pending appointments have modify, cancel, and complete actions available.
+
+## Booking and rescheduling
+
+A physiotherapist can book a new appointment for an existing patient via the wizard at `/Fisioterapeuta/Appointment/Paso1?idPaciente=<id>&idFisioterapeuta=<id>`. The workflow is identical to the receptionist wizard but scoped to the physiotherapist's own availability.
+
+<Steps>
+  <Step title="Step 1 — Physiotherapist pre-selected">
+    Because the booking is launched with `idFisioterapeuta` already set, step 1 is pre-populated with the logged-in physiotherapist's ID.
+  </Step>
+  <Step title="Step 2 — Select service">
+    The physiotherapist chooses the service for the session.
+  </Step>
+  <Step title="Step 3 — Select date and time">
+    Available slots are calculated from the physiotherapist's own `Horarios` records.
+  </Step>
+  <Step title="Step 4 — Confirm">
+    On confirmation, the `Cita` is created and the patient's credit balance is decremented.
+  </Step>
+</Steps>
+
+## Managing appointment status
+
+Appointment status transitions available to a physiotherapist on pending appointments:
+
+**From the Upcoming appointments panel** (`CitasProximas`):
+
+| Action | Route | Resulting status |
+|---|---|---|
+| Complete | `/Recepcionista/Appointment/Completada?id=<id>` | `Completada` |
+| Cancel | `/Recepcionista/Appointment/Cancelar?id=<id>` | `Cancelada` |
+| Modify | `/Recepcionista/Appointment/Edit?id=<id>` | Pending (updated) |
+
+**From the Appointment history table** (`HistorialCitas`):
+
+| Action | Route | Resulting status |
+|---|---|---|
+| Modify | `/Fisioterapeuta/Appointment/Edit?id=<id>` | Pending (updated) |
+| Cancel | `/Fisioterapeuta/Appointment/Cancelar?id=<id>` | `Cancelada` |
+| Complete | `/Fisioterapeuta/Appointment/Completada?id=<id>` | `Completada` |
+
+<Note>
+  The upcoming appointments panel links through `/Recepcionista/Appointment/` handlers (Completada, Cancelar, Edit), while the history table uses dedicated `/Fisioterapeuta/Appointment/` handlers. Both sets of routes handle the same underlying status transitions.
+</Note>
+
+## Availability schedule (Horario)
+
+A physiotherapist's `Horarios` collection defines their weekly availability. Each `Horario` record specifies which days and times the physiotherapist is available. These records are read during step 3 of the appointment wizard to generate the list of bookable time slots.
+
+Without at least one `Horario` record, a physiotherapist will appear in the therapist selector but no time slots will be available for booking.
+
+<Tip>
+  Set up a physiotherapist's availability immediately after creating their account to ensure patients and receptionists can book appointments with them.
+</Tip>
+
+## Error handling
+
+The Fisioterapeuta dashboard surfaces two categories of errors via TempData alerts:
+
+- **`Error-Creditos-Fisioterapeuta`** — Displayed when a booking fails because the patient has insufficient credits.
+- **`Error-Hora-Fisioterapeuta`** — Displayed when a time slot conflict is detected during booking.

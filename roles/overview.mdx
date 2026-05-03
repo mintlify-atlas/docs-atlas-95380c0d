@@ -1,0 +1,70 @@
+---
+title: "Understanding user roles and permissions in HealthMambo"
+description: "HealthMambo uses four role-based access levels — Admin, Receptionist, Physiotherapist, and Patient — to control what each user can see and do."
+---
+
+HealthMambo enforces access control through four distinct roles seeded directly into the database. Every user account is assigned exactly one role at creation, and the application uses ASP.NET Core Identity's `[Authorize(Roles = "...")]` attribute to restrict each section of the platform to the appropriate role. No role can access pages intended for another role.
+
+<CardGroup cols={2}>
+  <Card title="Admin" icon="shield-halved" href="/roles/admin">
+    Full clinic management — users, services, and credit packages.
+  </Card>
+  <Card title="Receptionist" icon="calendar-plus" href="/roles/receptionist">
+    Book appointments on behalf of patients and assign credit packages.
+  </Card>
+  <Card title="Physiotherapist" icon="stethoscope" href="/roles/physiotherapist">
+    Manage your own schedule, view upcoming sessions, and update appointment status.
+  </Card>
+  <Card title="Patient" icon="user" href="/roles/patient">
+    Book your own appointments, track your credit balance, and review your history.
+  </Card>
+</CardGroup>
+
+## Role comparison
+
+The table below summarises which capabilities are available to each role.
+
+| Capability | Admin | Receptionist | Physiotherapist | Patient |
+|---|:---:|:---:|:---:|:---:|
+| Manage user accounts | Yes | No | No | No |
+| Configure services | Yes | No | No | No |
+| Manage credit packages | Yes | No | No | No |
+| View clinic dashboard | Yes | No | No | No |
+| Book appointments (any patient) | No | Yes | No | No |
+| Book own appointments | No | No | Yes | Yes |
+| Assign credits to patients | No | Yes | No | No |
+| View upcoming appointments | No | Yes | Yes | Yes |
+| Complete / cancel appointments | No | Yes | Yes | No |
+| View appointment history | No | Yes | Yes | Yes |
+| Set weekly availability (Horario) | No | No | Yes | No |
+| View own credit balance | No | No | No | Yes |
+
+## How roles are assigned
+
+Roles are seeded into the `AspNetRoles` table during the initial database migration via `OnModelCreating` in `ApplicationDbContext`. The four role IDs are fixed:
+
+| Role | ID |
+|---|---|
+| `Admin` | `b98be2a3-d36f-432f-a733-c88a2e4f8579` |
+| `Recepcionista` | `16fc874e-773d-48ff-a4c2-4b1cb2f25b69` |
+| `Fisioterapeuta` | `35e75c8e-94d5-442a-8de1-16b11fa58f1a` |
+| `Paciente` | `f41a4034-6635-4f4f-94d0-9c8fd20f2136` |
+
+<Note>
+  Assigning a role to a user account is done through the `AspNetUserRoles` join table. HealthMambo does not currently provide a UI for initial role assignment — use a database tool or a custom seed script for the first admin account.
+</Note>
+
+## The `ApplicationUser` model
+
+All four roles share the same `ApplicationUser` class, which extends `IdentityUser` with the following fields:
+
+```csharp ApplicationUser.cs
+public string FirstName { get; set; }
+public string LastName { get; set; }
+public string ImageFileName { get; set; }
+public DateTime CreatedAt { get; set; }
+public int CreditosDisponibles { get; set; } = 0;
+public ICollection<Horario> Horarios { get; set; }
+```
+
+`CreditosDisponibles` is only meaningful for Patient accounts. `Horarios` is only populated for Physiotherapist accounts.

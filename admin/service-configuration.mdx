@@ -1,0 +1,114 @@
+---
+title: "Configuring physiotherapy services for your clinic"
+description: "Learn how to create and manage the physiotherapy services that patients book, including duration, credit cost, pricing, and feature lists."
+---
+
+Services define the treatments your clinic offers. Each service carries a credit cost, a reference price, a duration, and an optional list of distinguishing features. When a receptionist books an appointment, they select one of these services — the service's duration determines when the appointment ends, and its credit cost is deducted from the patient's balance. Navigate to **Admin > Services** (`/Admin/ServiciosFisioConf/Index`) to view and manage all services.
+
+## Service fields
+
+The `Servicio` model captures the following data:
+
+| Field | Type | Constraints | Description |
+|---|---|---|---|
+| `Nombre` | `string` | Required, max 100 chars | Display name shown to patients and staff |
+| `Descripcion` | `string` | Optional, max 500 chars | Free-text description of the treatment |
+| `CreditosNecesarios` | `int` | Min 0 | Credits deducted from the patient's balance on booking |
+| `PrecioReferencia` | `decimal` | Min 0 | Reference price in MXN for cash or out-of-credit scenarios |
+| `Duracion` | `TimeSpan` | `hh:mm:ss` format | Length of the appointment session |
+| `Features` | `List<Feature>` | Optional | Short bullet-point characteristics shown on booking screens |
+
+```csharp Servicio.cs
+public class Servicio
+{
+    public int Id { get; set; }
+
+    [Required, StringLength(100)]
+    public string Nombre { get; set; }
+
+    [StringLength(500)]
+    public string Descripcion { get; set; } = string.Empty;
+
+    [Range(0, int.MaxValue)]
+    public int CreditosNecesarios { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public decimal PrecioReferencia { get; set; }
+
+    [DataType(DataType.Duration)]
+    public TimeSpan Duracion { get; set; }
+
+    public List<Feature> Features { get; set; } = new();
+}
+```
+
+## Creating a service
+
+<Steps>
+  <Step title="Open the create form">
+    Click **Nuevo Servicio** on the Services index page. This navigates to `/Admin/ServiciosFisioConf/Create`.
+  </Step>
+  <Step title="Enter the service name">
+    Type a clear, patient-facing name in **Nombre del Servicio** — for example, `Terapia manual cervical` or `Rehabilitación de rodilla`. Maximum 100 characters.
+  </Step>
+  <Step title="Write a description (optional)">
+    Use the **Descripción** textarea to explain the treatment in more detail. This text appears on service listings and appointment confirmations. Maximum 500 characters.
+  </Step>
+  <Step title="Set the credit cost">
+    Enter a whole number in **Créditos necesarios**. This is the number of credits that will be deducted from a patient's `CreditosDisponibles` balance each time the service is booked.
+
+    <Tip>
+    Set `CreditosNecesarios` to `0` for free or administrative appointments that should not consume patient credits.
+    </Tip>
+  </Step>
+  <Step title="Set the reference price">
+    Enter a decimal value in **Precio Referencia** (e.g. `350.00`). This is stored in MXN and is used for display, invoicing, or cash-payment scenarios where a patient does not have sufficient credits.
+  </Step>
+  <Step title="Enter the duration">
+    Type the session length in `hh:mm:ss` format in the **Duración** field. For a 45-minute session enter `00:45:00`; for 1 hour enter `01:00:00`.
+
+    <Note>
+    The scheduling engine uses this value to calculate the appointment end time. A service with `Duracion = 00:45:00` booked at 10:00 will block the physiotherapist's calendar until 10:45.
+    </Note>
+  </Step>
+  <Step title="Add features (optional)">
+    Enter a comma-separated list of short bullet points in the **Características** textarea. Each item becomes a `Feature` record linked to the service.
+
+    ```
+    Evaluación física inicial, Ejercicios personalizados, Seguimiento semanal
+    ```
+
+    Features appear as a list on the service index and on patient-facing booking screens.
+  </Step>
+  <Step title="Save">
+    Click **Guardar**. The page redirects to the Services index on success.
+  </Step>
+</Steps>
+
+## How duration affects appointments
+
+The `Duracion` field is a `TimeSpan` stored as a SQL Server `time(7)` column. When a receptionist creates an appointment, the system adds `Duracion` to the selected start time to derive the end time. Because of this:
+
+- Changing a service's duration affects all **future** appointments that use it — existing appointments are not retroactively updated.
+- Overlapping bookings for the same physiotherapist are prevented by comparing start and end times, so accurate durations are important to avoid false availability.
+
+## How credits integrate with the system
+
+`CreditosNecesarios` links the service catalogue to the patient credit system:
+
+1. An admin defines a service with, for example, `CreditosNecesarios = 2`.
+2. A receptionist assigns a credit package to the patient, adding credits to `CreditosDisponibles`.
+3. When the patient's appointment for that service is confirmed, `CreditosNecesarios` credits are deducted from `CreditosDisponibles`.
+4. If `CreditosDisponibles` falls below the service's `CreditosNecesarios`, the booking is blocked until the patient purchases more credits.
+
+<Tip>
+Use `PrecioReferencia` to communicate the cash equivalent of each credit to patients so they can compare package value against walk-in rates.
+</Tip>
+
+## Editing a service
+
+Click **Editar** on any row in the Services index to open `/Admin/ServiciosFisioConf/Edit?id={id}`. All fields are editable, including the comma-separated features list which is presented as a single textarea and re-parsed into `Feature` records on save.
+
+## Deleting a service
+
+Click **Eliminar** on any row. Confirm on the delete confirmation page. Removing a service does not delete historical appointments that referenced it, but you should verify no active appointments use the service before deleting it.

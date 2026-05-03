@@ -1,0 +1,104 @@
+---
+title: 'Managing physiotherapist weekly availability schedules'
+description: 'Horario records define when each physiotherapist is available, and directly control which time slots appear during appointment booking in Step 4 of the wizard.'
+---
+
+HealthMambo uses `Horario` records to model physiotherapist availability. Each record defines a day of the week and a start-to-end time window for one physiotherapist. When a patient or receptionist reaches Step 4 of the booking wizard, the system queries the assigned therapist's schedules to compute which time slots are available on the selected date.
+
+## The `Horario` model
+
+```csharp
+public class Horario
+{
+    public int Id { get; set; }
+
+    public string DiaSemana { get; set; } = string.Empty; // Day of the week, e.g. "Lunes"
+
+    public TimeSpan HoraInicio { get; set; }  // Window start, e.g. 08:00:00
+
+    public TimeSpan HoraFin { get; set; }     // Window end, e.g. 17:00:00
+
+    public string? UsuarioId { get; set; }    // The physiotherapist this schedule belongs to
+    public ApplicationUser? Usuario { get; set; }
+}
+```
+
+`DiaSemana` is stored as a Spanish day-of-week string (for example, `"Lunes"`, `"Martes"`, `"Miércoles"`). The booking wizard maps the user-selected date to a day name and filters `Horario` records accordingly.
+
+## How schedules drive time slot generation
+
+When a user reaches Step 4 (`Paso4`) of the booking wizard, the page model:
+
+1. Looks up the selected physiotherapist's `Horario` records for the day of the week that corresponds to the chosen date.
+2. Generates individual time slots within each matching `HoraInicio`–`HoraFin` window, spaced by the duration of the selected service (`Servicio.Duracion`).
+3. Removes slots that are already occupied by confirmed appointments.
+4. Renders the remaining slots in the dropdown.
+
+If no `Horario` record exists for the therapist on that day, the page displays "No hay horarios disponibles para la fecha seleccionada."
+
+<Note>
+Schedules are per-user. Two physiotherapists can have different availability on the same day without affecting each other.
+</Note>
+
+## Managing schedules
+
+Schedules are managed through the administration panel. To set up a physiotherapist's availability:
+
+<Steps>
+  <Step title="Open the schedule management page">
+    Navigate to **Admin → Usuarios** and select the physiotherapist whose availability you want to configure.
+  </Step>
+  <Step title="Add a Horario record">
+    Create a new `Horario` entry for each day the physiotherapist works. Set:
+
+    | Field | Description |
+    |---|---|
+    | **DiaSemana** | Day of the week in Spanish, e.g. `Lunes` |
+    | **HoraInicio** | Start of the availability window, e.g. `08:00:00` |
+    | **HoraFin** | End of the availability window, e.g. `17:00:00` |
+
+    The `UsuarioId` is set automatically to the selected physiotherapist.
+  </Step>
+  <Step title="Save and verify">
+    Save the record. Go to the booking wizard, select that physiotherapist, and choose a date that matches the day you configured to verify slots appear in Step 4.
+  </Step>
+</Steps>
+
+## Example schedule configuration
+
+A physiotherapist working Monday to Friday from 09:00 to 14:00 would have five `Horario` rows:
+
+| `DiaSemana` | `HoraInicio` | `HoraFin` |
+|---|---|---|
+| `Lunes` | `09:00:00` | `14:00:00` |
+| `Martes` | `09:00:00` | `14:00:00` |
+| `Miércoles` | `09:00:00` | `14:00:00` |
+| `Jueves` | `09:00:00` | `14:00:00` |
+| `Viernes` | `09:00:00` | `14:00:00` |
+
+<Tip>
+To model a split shift (e.g. morning and afternoon), add two `Horario` records for the same day — one for the morning window and one for the afternoon window.
+</Tip>
+
+## Effect on appointment availability
+
+The relationship between schedules and appointments is:
+
+- A therapist with no `Horario` records will never appear in Step 4 with available slots, regardless of which date is chosen.
+- Existing confirmed appointments within a schedule window are excluded from the available slot list, preventing double-booking.
+- Changing or deleting a `Horario` record does not affect appointments that have already been created — it only affects future slot generation.
+
+<Warning>
+Deleting a `Horario` record while appointments exist within that window does not cancel those appointments. Manage existing appointments manually before removing a schedule.
+</Warning>
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Appointment scheduling" icon="calendar-check" href="/features/appointments">
+    See exactly how Step 4 uses schedule data to populate the time slot dropdown.
+  </Card>
+  <Card title="User roles" icon="users" href="/roles/overview">
+    Learn which roles can view and edit physiotherapist schedule records.
+  </Card>
+</CardGroup>

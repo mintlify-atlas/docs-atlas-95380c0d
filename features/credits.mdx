@@ -1,0 +1,132 @@
+---
+title: 'Credit-based billing and packages for physiotherapy'
+description: 'Patients hold a credit balance consumed when booking services. Receptionists assign credit packages to top up balances and track all transactions.'
+---
+
+HealthMambo uses a credit system instead of per-appointment cash payments. Each service specifies how many credits it costs to book. Patients hold a `CreditosDisponibles` balance that decreases when they confirm an appointment and increases when a receptionist assigns them a credit package.
+
+## How credits work
+
+<CardGroup cols={3}>
+  <Card title="Credit packages" icon="box">
+    Admins define packages with a fixed number of credits and a price. Receptionists assign packages to patients.
+  </Card>
+  <Card title="Service cost" icon="stethoscope">
+    Every service has a `CreditosNecesarios` value. Booking the service deducts that many credits from the patient's balance.
+  </Card>
+  <Card title="Transaction history" icon="clock">
+    Every assignment and deduction is recorded as a `TransaccionCredito` for auditing.
+  </Card>
+</CardGroup>
+
+## Data models
+
+### `PaqueteCredito` — credit package
+
+```csharp
+public class PaqueteCredito
+{
+    public int Id { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public string Nombre { get; set; }          // Package name
+
+    [Required]
+    public decimal Precio { get; set; }          // Price in MXN
+
+    [Required]
+    public int CantidadCreditos { get; set; }    // Credits included in the package
+
+    [StringLength(255)]
+    public string? Descripcion { get; set; }     // Optional description
+
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+```
+
+### `TransaccionCredito` — transaction record
+
+```csharp
+public class TransaccionCredito
+{
+    public int Id { get; set; }
+
+    [Required]
+    public string ApplicationUserId { get; set; }   // Patient who received the credits
+    public ApplicationUser ApplicationUser { get; set; }
+
+    [Required]
+    public int PaqueteCreditoId { get; set; }        // Package that was assigned
+    public PaqueteCredito PaqueteCredito { get; set; }
+
+    [Required]
+    public int CantidadCreditos { get; set; }        // Credits added (positive) or deducted (negative)
+
+    [Required]
+    public DateTime FechaTransaccion { get; set; }
+
+    public string Descripcion { get; set; } = string.Empty;
+}
+```
+
+Each row in `TransaccionCredito` represents one event — either a package assignment that adds credits, or a service booking that deducts them.
+
+## Assigning credits to a patient
+
+Receptionists use the **Gestión de Créditos** page (`Pages/Recepcionista/GestionCreditos`) to top up a patient's balance.
+
+<Steps>
+  <Step title="Select the patient">
+    Use the patient search or filter to locate the patient whose balance you want to top up.
+  </Step>
+  <Step title="Choose a credit package">
+    Select a package from the **Seleccionar Paquete de Créditos** dropdown. The dropdown shows each package's name and credit quantity.
+  </Step>
+  <Step title="Assign the package">
+    Click **Asignar Créditos**. The system:
+    1. Adds `PaqueteCredito.CantidadCreditos` to the patient's `CreditosDisponibles` balance.
+    2. Creates a `TransaccionCredito` record linking the patient, the package, the credit amount, and a timestamp.
+
+    A success or error message is shown after submission.
+  </Step>
+</Steps>
+
+<Note>
+Only users with the Receptionist role can access the **Gestión de Créditos** page.
+</Note>
+
+## Consuming credits when booking
+
+When a patient confirms an appointment at the `Confirmacion` step, the system checks that the patient's `CreditosDisponibles` is greater than or equal to `Servicio.CreditosNecesarios`. If there are sufficient credits, the booking is confirmed and the balance is decremented by the service cost.
+
+<Warning>
+If the patient does not have enough credits to cover `CreditosNecesarios`, the booking is rejected. Receptionists must assign an adequate package before the patient can book that service.
+</Warning>
+
+## Viewing transaction history
+
+All credit package assignments are stored in the `TransaccionCredito` table. Each record captures:
+
+| Field | Description |
+|---|---|
+| `ApplicationUserId` | The patient who received the credits |
+| `PaqueteCreditoId` | The package that was assigned |
+| `CantidadCreditos` | Number of credits added in this assignment |
+| `FechaTransaccion` | Date and time of the assignment |
+| `Descripcion` | Optional label for the transaction |
+
+<Tip>
+Use the `Descripcion` field to add context when assigning credits — for example, noting the payment method or the package tier purchased.
+</Tip>
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Services" icon="list" href="/features/services">
+    See how `CreditosNecesarios` is set on each service.
+  </Card>
+  <Card title="Appointment scheduling" icon="calendar-check" href="/features/appointments">
+    Understand when credits are deducted during the booking flow.
+  </Card>
+</CardGroup>

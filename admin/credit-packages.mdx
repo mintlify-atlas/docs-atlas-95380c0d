@@ -1,0 +1,102 @@
+---
+title: "How to create and manage clinic patient credit packages"
+description: "Learn how admins define credit packages that receptionists sell to patients, adding session credits to patient accounts in HealthMambo."
+---
+
+Credits are the currency patients use to book physiotherapy sessions. Admins define credit packages that bundle a set number of credits with a price — receptionists then sell these packages to patients, immediately topping up their available balance. Navigate to **Admin > Credit Packages** (`/Admin/PaquetesCreditosConf/Index`) to manage the packages your clinic offers.
+
+## Credit package fields
+
+The `PaqueteCredito` model stores the following information:
+
+| Field | Type | Constraints | Description |
+|---|---|---|---|
+| `Nombre` | `string` | Required, max 100 chars | Package name shown to receptionists and patients |
+| `Precio` | `decimal` | Required, min 0 | Sale price in MXN |
+| `CantidadCreditos` | `int` | Required, min 1 | Credits added to the patient's balance on assignment |
+| `Descripcion` | `string?` | Optional, max 255 chars | Free-text notes about what the package includes |
+| `CreatedAt` | `DateTime` | Auto-set to `DateTime.Now` | Internal audit timestamp |
+
+```csharp PaqueteCredito.cs
+public class PaqueteCredito
+{
+    public int Id { get; set; }
+
+    [Required, StringLength(100)]
+    public string Nombre { get; set; } = string.Empty;
+
+    [Required, Range(0, double.MaxValue)]
+    public decimal Precio { get; set; }         // Price in MXN
+
+    [Required, Range(1, int.MaxValue)]
+    public int CantidadCreditos { get; set; }   // Credits included
+
+    [StringLength(255)]
+    public string? Descripcion { get; set; }    // Optional notes
+
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+```
+
+## Creating a credit package
+
+<Steps>
+  <Step title="Open the create form">
+    Click **Nuevo Paquete** on the Credit Packages index page. This navigates to `/Admin/PaquetesCreditosConf/Create`.
+  </Step>
+  <Step title="Name the package">
+    Enter a descriptive name in **Nombre** that receptionists can identify at a glance — for example, `Paquete Básico 5 sesiones` or `Mensualidad Premium`. Maximum 100 characters.
+  </Step>
+  <Step title="Set the price">
+    Enter the sale price in **Precio** as a decimal value (e.g. `750.00`). The value is stored in MXN and displayed with currency formatting throughout the system.
+  </Step>
+  <Step title="Set the credit quantity">
+    Enter the number of credits the patient receives in **Cantidad de Créditos**. This number is added directly to the patient's `CreditosDisponibles` field when a receptionist assigns the package. Must be at least 1.
+
+    <Tip>
+    Align `CantidadCreditos` with the `CreditosNecesarios` values on your services. For example, if your standard session costs 1 credit, a 10-credit package covers exactly 10 sessions.
+    </Tip>
+  </Step>
+  <Step title="Add a description (optional)">
+    Use the **Descripción** textarea to describe what the package includes or highlight its value. This text is visible to receptionists on the assignment screen. Maximum 255 characters.
+  </Step>
+  <Step title="Save">
+    Click **Guardar**. The package is saved with `CreatedAt` set to the current timestamp and is immediately available for receptionists to assign.
+  </Step>
+</Steps>
+
+## How receptionists assign packages to patients
+
+Once packages are defined, receptionists use the credit management page at `/Recepcionista/GestionCreditos` to add credits to a patient's account:
+
+<Steps>
+  <Step title="Search for the patient">
+    In the **Buscar Paciente** field, type the patient's name or email. An autocomplete list shows matching patients — select the correct one to populate the hidden `pacienteId` field.
+
+    <Warning>
+    You must select a patient from the autocomplete list. Typing a name without selecting from the list will fail validation, preventing accidental credit assignments to the wrong account.
+    </Warning>
+  </Step>
+  <Step title="Select a package">
+    Choose a package from the **Seleccionar Paquete de Créditos** dropdown. Each option shows the package name and the number of credits it contains.
+  </Step>
+  <Step title="Assign">
+    Click **Asignar Créditos**. The system adds `CantidadCreditos` to the patient's `CreditosDisponibles` balance and records the transaction. The patient can now use those credits to book services.
+  </Step>
+</Steps>
+
+## Viewing credit transaction history
+
+The admin **Gestión de Créditos** page (`/Admin/GestionCreditosConf/Index`) provides an overview of credit activity across all patients. The receptionist credit assignment page (`/Recepcionista/GestionCreditos`) is where individual package assignments are made. Together these two pages give staff a complete view of patient credit balances and transaction history.
+
+<Note>
+Only users with the **Admin** role can create, edit, or delete credit packages. Receptionists can assign existing packages to patients but cannot modify the package catalogue.
+</Note>
+
+## Editing and deleting packages
+
+From the Credit Packages index, use **Editar** to update any field on an existing package, or **Eliminar** to remove a package. Deleting a package does not affect patients who have already been assigned credits from it — their `CreditosDisponibles` balance is unchanged. The deleted package simply becomes unavailable for future assignments.
+
+<Warning>
+Changing `CantidadCreditos` on an existing package does not retroactively alter any credits already assigned to patients. The new value applies only to future assignments.
+</Warning>

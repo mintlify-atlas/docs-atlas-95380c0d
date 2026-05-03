@@ -1,0 +1,105 @@
+---
+title: "HealthMambo appsettings.json configuration reference"
+description: "Operator reference for appsettings.json: configure the SQL Server connection string, logging levels, allowed hosts, and development environment overrides."
+---
+
+HealthMambo is configured through two JSON files in the project root: `appsettings.json` for production settings and `appsettings.Development.json` for local development overrides. As an operator, the primary setting you must configure before running the application is the database connection string. All other settings have workable defaults.
+
+## appsettings.json
+
+This is the base configuration file loaded in all environments:
+
+```json appsettings.json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Initial Catalog=FCDB;Integrated Security=True;Trust Server Certificate=True"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+```
+
+### ConnectionStrings.DefaultConnection
+
+The only setting you are required to change before deploying. This is the ADO.NET connection string passed to Entity Framework Core's SQL Server provider.
+
+<ResponseField name="Server" type="string">
+  Hostname or IP address of the SQL Server instance. Use `localhost` when SQL Server is running on the same machine as the application. For a named instance such as SQL Server Express, use `localhost\SQLEXPRESS`.
+</ResponseField>
+
+<ResponseField name="Initial Catalog" type="string">
+  Name of the target database. The default value is `FCDB`. If you run multiple HealthMambo instances (for example, two separate clinics on the same server), change this value for each instance so they use separate databases.
+</ResponseField>
+
+<ResponseField name="Integrated Security" type="boolean" default="True">
+  When `True`, the application connects to SQL Server using the Windows identity of the process running the application (Windows Authentication). No username or password is embedded in the connection string. Set to `False` and add `User Id` and `Password` parameters if you need SQL Server Authentication instead.
+</ResponseField>
+
+<ResponseField name="Trust Server Certificate" type="boolean" default="True">
+  When `True`, the application accepts the SQL Server TLS certificate without verifying it against a trusted certificate authority. This is appropriate for local development and self-hosted deployments using self-signed certificates. In hardened production environments, set this to `False` and install a valid certificate on the SQL Server instance.
+</ResponseField>
+
+<Tip>
+  To use SQL Server Authentication instead of Windows Authentication, replace `Integrated Security=True` with explicit credentials:
+
+  ```json
+  "DefaultConnection": "Server=localhost;Initial Catalog=FCDB;User Id=sa;Password=YourPassword;Trust Server Certificate=True"
+  ```
+</Tip>
+
+### Logging
+
+Controls the minimum severity level of log messages written to the console and configured log sinks.
+
+<ResponseField name="Logging.LogLevel.Default" type="string" default="Information">
+  Minimum log level for all application code. `Information` logs routine operational events. Change to `Warning` to reduce noise in production, or `Debug` for more verbose output during troubleshooting.
+</ResponseField>
+
+<ResponseField name="Logging.LogLevel.Microsoft.AspNetCore" type="string" default="Warning">
+  Minimum log level specifically for ASP.NET Core framework messages. Kept at `Warning` by default to suppress the high volume of `Information`-level request pipeline messages.
+</ResponseField>
+
+### AllowedHosts
+
+<ResponseField name="AllowedHosts" type="string" default='"*"'>
+  Semicolon-separated list of hostnames the application will respond to. `"*"` accepts requests from any hostname. For a production deployment, restrict this to the server's actual hostname or IP address, for example `"clinic.local;192.168.1.10"`.
+</ResponseField>
+
+## appsettings.Development.json
+
+This file is loaded only when the `ASPNETCORE_ENVIRONMENT` environment variable is set to `Development` (the default when running with `dotnet run` or from Visual Studio). Settings here override the matching values from `appsettings.json`.
+
+```json appsettings.Development.json
+{
+  "DetailedErrors": true,
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+```
+
+<ResponseField name="DetailedErrors" type="boolean" default="true">
+  When `true`, ASP.NET Core renders full exception details — including stack traces — in the browser error page instead of a generic error message. Leave this enabled only in development environments. It is not present in `appsettings.json`, so it defaults to `false` in production.
+</ResponseField>
+
+<Note>
+  `appsettings.Development.json` does not override the connection string. You must set `ConnectionStrings.DefaultConnection` in `appsettings.json` (or in environment variables) to point at your development database.
+</Note>
+
+## Environment variable overrides
+
+Any setting in `appsettings.json` can be overridden using environment variables, which is useful in containerized or CI deployments. ASP.NET Core maps double-underscores (`__`) to JSON path separators:
+
+```bash
+export ConnectionStrings__DefaultConnection="Server=prod-server;Initial Catalog=FCDB;..."
+```
+
+This takes precedence over the value in `appsettings.json` without modifying the file.

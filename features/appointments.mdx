@@ -1,0 +1,120 @@
+---
+title: 'How appointment scheduling works in HealthMambo'
+description: 'Book, manage, and cancel physiotherapy appointments using a guided four-step wizard available to receptionists, physiotherapists, and patients.'
+---
+
+HealthMambo uses a four-step booking wizard to schedule appointments. Every role — Receptionist, Physiotherapist, and Patient — follows the same flow, which collects a therapist selection, service choice, date, and available time slot before committing the appointment to the database.
+
+## The `Cita` model
+
+An appointment is stored as a `Cita` record with the following fields:
+
+```csharp
+public class Cita
+{
+    public int Id { get; set; }
+
+    [Required]
+    public string UsuarioId { get; set; }           // Patient
+    public ApplicationUser Usuario { get; set; }
+
+    public string? FisioterapeutaId { get; set; }   // Nullable — assigned during booking
+    public ApplicationUser? Fisioterapeuta { get; set; }
+
+    public int? ServicioId { get; set; }             // Nullable — assigned during booking
+    public Servicio? Servicio { get; set; }
+
+    [Required]
+    public DateTime HoraInicio { get; set; }
+
+    [NotMapped]
+    public DateTime HoraFin => Servicio != null
+        ? HoraInicio + Servicio.Duracion
+        : HoraInicio;
+
+    [Required]
+    [StringLength(20)]
+    public string Estado { get; set; } = "Pendiente";
+
+    [StringLength(500)]
+    public string? Motivo { get; set; }
+
+    [StringLength(1000)]
+    public string? Notas { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+```
+
+`HoraFin` is a computed, non-mapped property derived from `HoraInicio` plus `Servicio.Duracion`. It is never written to the database.
+
+## Appointment statuses
+
+| Status | Meaning |
+|---|---|
+| `Pendiente` | Default state when an appointment is created |
+| `Cancelada` | Cancelled via the cancellation flow |
+| `Completada` | Session has been delivered and marked complete |
+
+<Note>
+New appointments always start with `Estado = "Pendiente"`. Receptionists and physiotherapists can transition an appointment to `Completada` or `Cancelada` from the history table.
+</Note>
+
+## Booking workflow
+
+The wizard spans four Razor Pages under `Pages/Recepcionista/Appointment/`.
+
+<Steps>
+  <Step title="Step 1 — Select a physiotherapist (Paso1)">
+    The user sees a list of available physiotherapists rendered as selectable cards. Selecting a card populates a hidden `idFisioterapeuta` field. The patient's ID (`IDPaciente`) is carried forward as a query parameter throughout the wizard.
+
+    The therapist ID and patient ID are passed to Paso2 via a GET form submission.
+  </Step>
+  <Step title="Step 2 — Choose a service (Paso2)">
+    The user picks a service from a dropdown. Each option shows the service name and the number of credits it requires (`CreditosNecesarios`). The selected `servicioId`, along with `IDPaciente` and `idFisioterapeuta`, is forwarded to Paso3.
+
+    <Tip>
+    Credit balance is not validated at this step. Validation happens when the appointment is confirmed and credits are deducted.
+    </Tip>
+  </Step>
+  <Step title="Step 3 — Pick a date (Paso3)">
+    A date picker lets the user choose the appointment date. The selected date is POSTed to load the next step.
+  </Step>
+  <Step title="Step 4 — Select a time slot (Paso4)">
+    The page shows available time slots (`HorariosDisponibles`) for the chosen date, filtered against the physiotherapist's `Horario` records. The user selects a slot from the dropdown and submits to proceed to the confirmation screen.
+
+    If no slots are available for the selected date, the page displays a message instead of a dropdown.
+  </Step>
+</Steps>
+
+## Confirmation
+
+After Step 4, the user lands on the `Confirmacion` page, which shows a summary:
+
+- Physiotherapist name
+- Patient name
+- Service name
+- Formatted date and time
+
+Submitting the confirmation form writes the `Cita` record to the database with `Estado = "Pendiente"` and deducts the required credits from the patient's balance.
+
+## Editing an appointment
+
+To edit an existing appointment, navigate to the appointment detail view and update the relevant fields. The `HoraFin` field is recalculated automatically based on the updated `HoraInicio` and the associated service duration — you do not need to set it manually.
+
+<Warning>
+Changing the service on an existing appointment will change the credit cost. Make sure the patient has sufficient credits before saving.
+</Warning>
+
+## Cancelling an appointment
+
+The `Cancelar` page handles appointment cancellation. Cancelling an appointment sets `Estado` to `"Cancelada"`. Credits are not automatically refunded when an appointment is cancelled — a receptionist must manually adjust the patient's balance if required.
+
+<CardGroup cols={2}>
+  <Card title="Credit management" icon="coins" href="/features/credits">
+    Learn how patient credit balances work and how receptionists assign packages.
+  </Card>
+  <Card title="Schedule management" icon="calendar" href="/features/schedules">
+    Understand how physiotherapist availability drives the time slots shown in Step 4.
+  </Card>
+</CardGroup>

@@ -1,133 +1,73 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "HealthMambo: Clinical Management for Physiotherapy"
+description: "HealthMambo is an open-source clinical management system for physiotherapy clinics. Manage appointments, staff, and patient credits in one platform."
 ---
 
-## Setting up
+HealthMambo is an open-source clinical management system built specifically for physiotherapy clinics operating in resource-limited environments. It unifies appointment scheduling, staff management, and a credit-based payment system into a single self-hosted web platform — with no licensing fees.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get HealthMambo running and schedule your first appointment in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Installation Guide" icon="server" href="/installation">
+    Step-by-step setup on Windows with .NET 8 and SQL Server Express.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="User Roles" icon="users" href="/roles/overview">
+    Learn how Admin, Receptionist, Physiotherapist, and Patient roles work together.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Core Features" icon="star" href="/features/appointments">
+    Explore appointments, credits, services, and schedule management.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What HealthMambo does
 
-Everything you need to create world-class documentation.
+HealthMambo solves three core operational challenges for physiotherapy clinics:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+- **Appointment management** — A guided multi-step booking wizard prevents double-booking and assigns the right physiotherapist to each patient.
+- **Credit-based billing** — Patients purchase credit packages that are automatically deducted when services are booked, simplifying payment tracking.
+- **Role-based access** — Four distinct user roles (Admin, Receptionist, Physiotherapist, Patient) give each person exactly the access they need.
 
-## Make your content agent ready
+## Getting started
 
-Make your docs work for humans and AI agents alike.
+<Steps>
+  <Step title="Install prerequisites">
+    Install .NET 8 Runtime and SQL Server Express on a Windows machine.
+  </Step>
+  <Step title="Clone and configure">
+    Clone the repository and update the database connection string in `appsettings.json`.
+  </Step>
+  <Step title="Run database migrations">
+    Apply Entity Framework migrations to create the database schema.
+  </Step>
+  <Step title="Create your first admin user">
+    Launch the app, register the first account, and assign it the Admin role through the database.
+  </Step>
+</Steps>
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
+<Note>
+  HealthMambo is designed to run on a local network server, minimizing internet dependency and making it suitable for clinics with limited connectivity.
+</Note>
 
-## Need inspiration?
+## Key capabilities
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Appointment scheduling" icon="calendar" href="/features/appointments">
+    Four-step booking wizard with service selection, time slots, and confirmation.
+  </Card>
+  <Card title="Credit packages" icon="credit-card" href="/features/credits">
+    Sell and assign credit bundles to patients; services deduct credits automatically.
+  </Card>
+  <Card title="Service catalog" icon="list" href="/features/services">
+    Define services with name, duration, credit cost, and features.
+  </Card>
+  <Card title="Schedule management" icon="clock" href="/features/schedules">
+    Set physiotherapist weekly availability to drive appointment slot selection.
+  </Card>
+  <Card title="User management" icon="user-gear" href="/admin/user-management">
+    Create and manage staff and patient accounts with role assignments.
+  </Card>
+  <Card title="Data models" icon="database" href="/reference/models/appointment">
+    Explore the underlying data structures powering the platform.
+  </Card>
+</CardGroup>

@@ -1,0 +1,111 @@
+---
+title: "Managing staff user accounts and roles in HealthMambo"
+description: "Learn how administrators create, edit, and delete staff and patient accounts, and assign roles that control access throughout the system."
+---
+
+The Users section of the admin panel lets you manage every account in the clinic — from receptionists and physiotherapists to the patients they serve. Access is restricted to users with the **Admin** role. Navigate to **Admin > Users** (`/Admin/UsuariosT/Index`) to see the full list of staff accounts with their assigned roles and weekly schedules.
+
+<Note>
+The user list at `/Admin/UsuariosT/Index` filters out accounts with the **Paciente** role. Patients appear only in the receptionist's credit-assignment and appointment workflows, not in this staff roster.
+</Note>
+
+## User account fields
+
+Every `ApplicationUser` extends ASP.NET Core Identity's `IdentityUser` with the following additional properties:
+
+| Field | Type | Description |
+|---|---|---|
+| `FirstName` | `string` | User's given name |
+| `LastName` | `string` | User's surname |
+| `Email` | `string` | Also used as the login username (`UserName = Email`) |
+| `ImageFileName` | `string` | File name of the profile photo stored in `wwwroot/img/users/` |
+| `CreditosDisponibles` | `int` | Credit balance — relevant for patient accounts |
+
+```csharp ApplicationUser.cs
+public class ApplicationUser : IdentityUser
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string ImageFileName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int CreditosDisponibles { get; set; } = 0;
+
+    public ICollection<Horario> Horarios { get; set; } = new List<Horario>();
+}
+```
+
+## Available roles
+
+<CardGroup cols={2}>
+  <Card title="Admin" icon="shield">
+    Full access to all administration pages, including user management, service configuration, and credit packages.
+  </Card>
+  <Card title="Fisioterapeuta" icon="user-doctor">
+    Physiotherapist. Manages their own appointments and views patient records. Requires weekly schedule entries.
+  </Card>
+  <Card title="Recepcionista" icon="headset">
+    Receptionist. Schedules appointments and assigns credit packages to patients. Requires weekly schedule entries.
+  </Card>
+  <Card title="Paciente" icon="user">
+    Patient. Books appointments and consumes credits. Created through the patient registration flow, not this panel.
+  </Card>
+</CardGroup>
+
+## Creating a staff member
+
+<Steps>
+  <Step title="Open the create form">
+    Click **Nuevo Usuario** on the Users index page. This takes you to `/Admin/UsuariosT/Create`.
+  </Step>
+  <Step title="Fill in personal details">
+    Enter the user's **Nombre** (first name), **Apellido** (last name), and **Email**. The email address becomes the login username automatically.
+  </Step>
+  <Step title="Set a password">
+    Enter an initial password in the **Contraseña** field. The password must satisfy ASP.NET Core Identity's default rules (minimum 6 characters, at least one digit and one non-alphanumeric character by default).
+  </Step>
+  <Step title="Upload a profile photo (optional)">
+    Choose an image file. The server saves it with a `Guid`-based filename under `wwwroot/img/users/` and stores the filename in `ImageFileName`.
+  </Step>
+  <Step title="Assign a role">
+    Select one of **Admin**, **Fisioterapeuta**, **Recepcionista**, or **Paciente** from the **Rol** dropdown. The Paciente role is excluded from the dropdown in the POST handler — use the patient registration flow for patients.
+  </Step>
+  <Step title="Set working hours (non-Admin only)">
+    The schedule section shows five rows pre-filled with weekdays (Monday–Friday). Enter a **start time** and **end time** for each day the user works. Leave both fields empty for days off — those rows are skipped on save.
+
+    <Note>
+    The schedule section is automatically hidden when you select the **Admin** role. Admins do not have working hours in the system.
+    </Note>
+  </Step>
+  <Step title="Save">
+    Click **Guardar**. The page redirects to the Users index on success, or displays an inline error message if validation fails or if the email is already taken.
+  </Step>
+</Steps>
+
+## Creating a patient account
+
+Patient accounts are created through the standard registration page rather than this admin panel. However, if you need to create a patient here, select the **Paciente** role. The system will create the account and assign the role, but note that the index page will not display Paciente users — their accounts are managed through the receptionist's credit and appointment workflows.
+
+## Editing a user
+
+Click **Editar** next to any user in the index to open `/Admin/UsuariosT/Edit?id={userId}`. You can update:
+
+- First name and last name
+- Email address
+- Profile photo (the current image is shown below the file picker)
+- Weekly schedule (all five weekday rows are presented pre-populated)
+
+<Warning>
+Changing a user's email also changes their login username, because `UserName` is set equal to `Email`. Make sure the user knows their new login before you save.
+</Warning>
+
+The edit form does not expose the password or role fields. To change a user's password use ASP.NET Identity's password reset flow. Role changes require direct database intervention or a dedicated role-management page.
+
+## Deleting a user
+
+Click **Eliminar** next to a user to navigate to `/Admin/UsuariosT/Delete?id={userId}`. Confirm the deletion on that page. The action is permanent — all associated schedule entries (`Horarios`) are also removed through the cascade delete configured in the database context.
+
+<Warning>
+Deleting a physiotherapist who has future appointments does not automatically cancel those appointments. Verify the user has no upcoming bookings before deleting their account.
+</Warning>

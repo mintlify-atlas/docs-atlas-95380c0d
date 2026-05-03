@@ -1,0 +1,180 @@
+---
+title: "Credit models: packages, transactions, and schedules"
+description: "Field reference for PaqueteCredito, TransaccionCredito, and Horario — credit packages, assignment history, and physiotherapist availability schedules."
+---
+
+Three supporting models round out the HealthMambo data layer. `PaqueteCredito` defines credit bundles that patients can purchase. `TransaccionCredito` records every credit assignment event for audit and history. `Horario` stores the weekly availability windows for physiotherapists, driving the time-slot selection step during appointment booking.
+
+## PaqueteCredito
+
+A credit package defines how many credits a patient receives and at what price. Admins create packages through the administration interface; receptionists assign packages to patients, which creates a `TransaccionCredito` record and increments `ApplicationUser.CreditosDisponibles`.
+
+<ResponseField name="Id" type="int" required>
+  Primary key. Auto-incremented by the database.
+</ResponseField>
+
+<ResponseField name="Nombre" type="string" required>
+  Display name of the package, for example "10-Session Starter Pack". Maximum 100 characters.
+</ResponseField>
+
+<ResponseField name="Precio" type="decimal" required>
+  Price of the package in MXN. Validated with `[Range(0, double.MaxValue)]`. Used for display and cash payment tracking; does not trigger any automated payment processing.
+</ResponseField>
+
+<ResponseField name="CantidadCreditos" type="int" required>
+  Number of credits included in the package. Validated with `[Range(1, int.MaxValue)]` — a package must include at least one credit.
+</ResponseField>
+
+<ResponseField name="Descripcion" type="string | null">
+  Optional description explaining what the package includes or its advantages. Maximum 255 characters.
+</ResponseField>
+
+<ResponseField name="CreatedAt" type="DateTime" default="DateTime.Now">
+  Timestamp of when the package was created, used for internal record-keeping.
+</ResponseField>
+
+## TransaccionCredito
+
+Each time a receptionist or admin assigns a credit package to a patient, a `TransaccionCredito` row is inserted. This provides a full audit trail of credit assignments.
+
+<ResponseField name="Id" type="int" required>
+  Primary key. Auto-incremented by the database.
+</ResponseField>
+
+<ResponseField name="ApplicationUserId" type="string" required>
+  Foreign key referencing the `ApplicationUser.Id` of the patient receiving the credits.
+</ResponseField>
+
+<ResponseField name="ApplicationUser" type="ApplicationUser" required>
+  Navigation property to the patient's user record.
+</ResponseField>
+
+<ResponseField name="PaqueteCreditoId" type="int" required>
+  Foreign key referencing the `PaqueteCredito.Id` that was assigned.
+</ResponseField>
+
+<ResponseField name="PaqueteCredito" type="PaqueteCredito" required>
+  Navigation property to the assigned credit package.
+</ResponseField>
+
+<ResponseField name="CantidadCreditos" type="int" required>
+  Number of credits that were assigned in this transaction. Typically mirrors `PaqueteCredito.CantidadCreditos` at the time of assignment.
+</ResponseField>
+
+<ResponseField name="FechaTransaccion" type="DateTime" required>
+  Date and time the transaction was recorded.
+</ResponseField>
+
+<ResponseField name="Descripcion" type="string" default='""'>
+  Optional description of the transaction, for example `"Package assigned by reception"`. Defaults to an empty string.
+</ResponseField>
+
+## Horario
+
+`Horario` records a single daily availability window for a physiotherapist. A physiotherapist may have multiple `Horario` rows — one per working day. These records are used to filter available appointment slots during the booking wizard.
+
+<ResponseField name="Id" type="int" required>
+  Primary key. Auto-incremented by the database.
+</ResponseField>
+
+<ResponseField name="DiaSemana" type="string" default='""'>
+  Day of the week this schedule applies to, for example `"Lunes"` or `"Viernes"`. Stored as a plain string; no enum validation is enforced at the model level.
+</ResponseField>
+
+<ResponseField name="HoraInicio" type="TimeSpan">
+  Start time of the availability window, stored as a `time` column in SQL Server. For example, `08:00:00` for 8 AM.
+</ResponseField>
+
+<ResponseField name="HoraFin" type="TimeSpan">
+  End time of the availability window. For example, `17:00:00` for 5 PM.
+</ResponseField>
+
+<ResponseField name="UsuarioId" type="string | null" default='""'>
+  Foreign key referencing the physiotherapist's `ApplicationUser.Id`. Nullable — schedule slots can exist without an assigned user.
+</ResponseField>
+
+<ResponseField name="Usuario" type="ApplicationUser | null">
+  Navigation property to the physiotherapist's user record. Corresponds to `ApplicationUser.Horarios`.
+</ResponseField>
+
+## Model source
+
+<CodeGroup>
+
+```csharp PaqueteCredito.cs
+using System.ComponentModel.DataAnnotations;
+
+namespace FisioCare_2.Models
+{
+    public class PaqueteCredito
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required]
+        [Range(0, double.MaxValue)]
+        public decimal Precio { get; set; }
+
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int CantidadCreditos { get; set; }
+
+        [StringLength(255)]
+        public string? Descripcion { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+    }
+}
+```
+
+```csharp TransaccionCredito.cs
+using System.ComponentModel.DataAnnotations;
+
+namespace FisioCare_2.Models
+{
+    public class TransaccionCredito
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public string ApplicationUserId { get; set; }
+        public ApplicationUser ApplicationUser { get; set; }
+
+        [Required]
+        public int PaqueteCreditoId { get; set; }
+        public PaqueteCredito PaqueteCredito { get; set; }
+
+        [Required]
+        public int CantidadCreditos { get; set; }
+
+        [Required]
+        public DateTime FechaTransaccion { get; set; }
+
+        public string Descripcion { get; set; } = string.Empty;
+    }
+}
+```
+
+```csharp Horario.cs
+namespace FisioCare_2.Models
+{
+    public class Horario
+    {
+        public int Id { get; set; }
+
+        public string DiaSemana { get; set; } = string.Empty;
+
+        public TimeSpan HoraInicio { get; set; }
+
+        public TimeSpan HoraFin { get; set; }
+
+        public string? UsuarioId { get; set; } = String.Empty;
+        public ApplicationUser? Usuario { get; set; }
+    }
+}
+```
+
+</CodeGroup>
